@@ -1,0 +1,17 @@
+# Environment
+.env
+
+# Data directory (mail, SSL, DNS zones, etc.)
+data/
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+
+# Editor files
+*.swp
+*.swo
+*~
+
+# Docker
+.docker/
