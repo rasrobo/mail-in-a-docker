@@ -120,5 +120,84 @@ certbot certonly --standalone --non-interactive --agree-tos \
   --preferred-challenges http 2>/dev/null || true
 service nginx start 2>/dev/null || true
 
+# Ensure Roundcube is installed (MIAB webmail.sh may fail in Docker)
+if [ ! -f /usr/local/lib/roundcubemail/index.php ]; then
+  echo "- Installing Roundcube webmail..."
+  RC_VER="1.6.10"
+  wget -q -O /tmp/roundcube.tar.gz \
+    "https://github.com/roundcube/roundcubemail/releases/download/$RC_VER/roundcubemail-$RC_VER-complete.tar.gz" 2>/dev/null || \
+  curl -sL -o /tmp/roundcube.tar.gz \
+    "https://github.com/roundcube/roundcubemail/releases/download/$RC_VER/roundcubemail-$RC_VER-complete.tar.gz" 2>/dev/null
+  if [ -f /tmp/roundcube.tar.gz ]; then
+    tar -xzf /tmp/roundcube.tar.gz -C /usr/local/lib/ 2>/dev/null
+    mv /usr/local/lib/roundcubemail-$RC_VER /usr/local/lib/roundcubemail 2>/dev/null || true
+    rm -f /tmp/roundcube.tar.gz
+  fi
+fi
+
+# Write nginx config with admin panel + Roundcube
+cat > /etc/nginx/sites-enabled/default << "NGINX"
+upstream php-fpm { server unix:/var/run/php/php8.1-fpm.sock; }
+server {
+    listen 80 default_server; listen [::]:80 default_server; server_tokens off;
+    location / { return 301 https://$host$request_uri; }
+    location /.well-known/acme-challenge/ {
+        alias /home/user-data/ssl/lets_encrypt/webroot/.well-known/acme-challenge/;
+    }
+}
+server {
+    listen 443 ssl http2 default_server; listen [::]:443 ssl http2 default_server;
+    server_tokens off;
+    ssl_certificate /home/user-data/ssl/ssl_certificate.pem;
+    ssl_certificate_key /home/user-data/ssl/ssl_private_key.pem;
+    root /home/user-data/www; index index.html index.htm;
+
+    location /admin/ {
+        proxy_pass http://127.0.0.1:10222/;
+        proxy_set_header X-Forwarded-For $remote_addr;
+    }
+
+    location = /mail { return 302 /mail/; }
+
+    rewrite ^/mail/$ /mail/index.php;
+    location /mail/ { alias /usr/local/lib/roundcubemail/; }
+    location ~ /mail/config/.* { return 403; }
+    location ~ /mail/.*\.php$ {
+        include fastcgi_params;
+        fastcgi_index index.php;
+        fastcgi_param SCRIPT_FILENAME /usr/local/lib/roundcubemail/index.php;
+        fastcgi_pass php-fpm;
+    }
+}
+NGINX
+
+# Write Roundcube config
+if [ -f /usr/local/lib/roundcubemail/index.php ]; then
+  cat > /usr/local/lib/roundcubemail/config/config.inc.php << "RCCONF"
+<?php
+$config = [];
+$config["db_dsnw"] = "sqlite:////home/user-data/mail/roundcube/roundcube.sqlite?mode=0640";
+$config["default_host"] = "ssl://127.0.0.1";
+$config["default_port"] = 993;
+$config["smtp_server"] = "tls://127.0.0.1";
+$config["smtp_port"] = 587;
+$config["smtp_user"] = "%u";
+$config["smtp_pass"] = "%p";
+$config["support_url"] = "";
+$config["product_name"] = "Mail-in-a-Box Webmail";
+$config["plugins"] = ["archive", "markasjunk", "managesieve"];
+$config["managesieve_host"] = "127.0.0.1";
+$config["managesieve_port"] = 4190;
+$config["managesieve_usetls"] = false;
+$config["enable_spellcheck"] = true;
+$config["spellcheck_engine"] = "pspell";
+$config["des_key"] = "rcmail-24byteDESkey*Str";
+RCCONF
+  chown -R www-data:www-data /usr/local/lib/roundcubemail 2>/dev/null || true
+fi
+
+# Reload nginx with the new config
+nginx -t && nginx -s reload 2>/dev/null || true
+
 service --status-all
 /status-check.sh
