@@ -77,5 +77,48 @@ sudo setup/start.sh
 /home/user-data/after-install.sh
 ## END After install
 
+# Install missing Python dependencies for the management daemon
+pip3 install boto3 qrcode pyotp 2>/dev/null || true
+
+# Write the hostname and env for the management daemon
+echo "$1" > /home/user-data/mailinabox.hostname 2>/dev/null || true
+
+# Create management daemon service
+cat > /usr/local/bin/mailinabox-daemon << "SVC"
+#!/bin/bash
+cd /mailinabox/management
+export STORAGE_ROOT=/home/user-data
+export PRIMARY_HOSTNAME=$(cat /home/user-data/mailinabox.hostname 2>/dev/null || hostname -f)
+export PUBLIC_IP=$(curl -s http://checkip.amazonaws.com 2>/dev/null || hostname -I | awk '{print $1}')
+export PUBLIC_IPV6=
+exec python3 daemon.py
+SVC
+chmod +x /usr/local/bin/mailinabox-daemon
+
+cat > /etc/systemd/system/mailinabox.service << "UNIT"
+[Unit]
+Description=Mail-in-a-Box Management Daemon
+After=network.target
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/mailinabox-daemon
+Restart=always
+User=root
+[Install]
+WantedBy=multi-user.target
+UNIT
+
+systemctl daemon-reload
+systemctl enable --now mailinabox 2>/dev/null || true
+
+# Provision Let's Encrypt certificate for the mail hostname
+echo "- Provisioning Let's Encrypt certificate for $1"
+service nginx stop 2>/dev/null || true
+certbot certonly --standalone --non-interactive --agree-tos \
+  -m admin@$(echo $1 | sed 's/^mail\.//') \
+  -d "$1" \
+  --preferred-challenges http 2>/dev/null || true
+service nginx start 2>/dev/null || true
+
 service --status-all
 /status-check.sh
