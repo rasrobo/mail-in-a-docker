@@ -140,6 +140,4 @@ The Docker packaging approach builds on patterns from the MIAB community. The up
 
 ---
 
-Built by [Ras Robo / Side Quest Studios](https://sidequeststudios.xyz)
-
-If you find this project useful, consider [supporting development on Ko-fi](https://ko-fi.com/sidequeststudios).
+If you find this project useful, consider starring the repository on GitHub.
