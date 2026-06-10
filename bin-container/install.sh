@@ -150,6 +150,12 @@ user_query = SELECT email AS user, 'mail' AS uid, 'mail' AS gid, '/home/user-dat
 iterate_query = SELECT email AS user FROM users
 SQLEND
 chmod 0600 /etc/dovecot/dovecot-sql.conf.ext
+
+# Fix Dovecot UID settings: mail system user has UID 8 but default first_valid_uid is 500
+sed -i "s/^first_valid_uid = .*/first_valid_uid = 0/" /etc/dovecot/conf.d/10-mail.conf 2>/dev/null || \
+  echo "first_valid_uid = 0" >> /etc/dovecot/conf.d/10-mail.conf
+printf "mail_uid = 8\nmail_gid = 8\n" >> /etc/dovecot/conf.d/99-local.conf 2>/dev/null || true
+
 doveadm reload 2>/dev/null || true
 
 # Write nginx config with admin panel + Roundcube
