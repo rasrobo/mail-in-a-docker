@@ -135,6 +135,23 @@ if [ ! -f /usr/local/lib/roundcubemail/index.php ]; then
   fi
 fi
 
+# Configure Dovecot to use SQL authentication (MIAB setup may skip this in Docker)
+echo "- Configuring Dovecot SQL authentication"
+sed -i "s/^!include auth-system.conf.ext/##!include auth-system.conf.ext/" /etc/dovecot/conf.d/10-auth.conf 2>/dev/null || true
+sed -i "s/^##!include auth-sql.conf.ext/!include auth-sql.conf.ext/" /etc/dovecot/conf.d/10-auth.conf 2>/dev/null || true
+grep -q "auth-sql.conf.ext" /etc/dovecot/conf.d/10-auth.conf || echo "!include auth-sql.conf.ext" >> /etc/dovecot/conf.d/10-auth.conf
+
+cat > /etc/dovecot/dovecot-sql.conf.ext << "SQLEND"
+driver = sqlite
+connect = /home/user-data/mail/users.sqlite
+default_pass_scheme = SHA512-CRYPT
+password_query = SELECT email AS user, password FROM users WHERE email = '%u'
+user_query = SELECT email AS user, 'mail' AS uid, 'mail' AS gid, '/home/user-data/mail/mailboxes/%d/%n' AS home FROM users WHERE email = '%u'
+iterate_query = SELECT email AS user FROM users
+SQLEND
+chmod 0600 /etc/dovecot/dovecot-sql.conf.ext
+doveadm reload 2>/dev/null || true
+
 # Write nginx config with admin panel + Roundcube
 cat > /etc/nginx/sites-enabled/default << "NGINX"
 upstream php-fpm { server unix:/var/run/php/php8.1-fpm.sock; }
