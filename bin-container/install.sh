@@ -196,25 +196,30 @@ NGINX
 
 # Write Roundcube config
 if [ -f /usr/local/lib/roundcubemail/index.php ]; then
-  cat > /usr/local/lib/roundcubemail/config/config.inc.php << "RCCONF"
+  MAIL_HOST="$1"
+  cat > /usr/local/lib/roundcubemail/config/config.inc.php << RCCONF
 <?php
-$config = [];
-$config["db_dsnw"] = "sqlite:////home/user-data/mail/roundcube/roundcube.sqlite?mode=0640";
-$config["default_host"] = "ssl://127.0.0.1";
-$config["default_port"] = 993;
-$config["smtp_server"] = "tls://127.0.0.1";
-$config["smtp_port"] = 587;
-$config["smtp_user"] = "%u";
-$config["smtp_pass"] = "%p";
-$config["support_url"] = "";
-$config["product_name"] = "Mail-in-a-Box Webmail";
-$config["plugins"] = ["archive", "markasjunk", "managesieve"];
-$config["managesieve_host"] = "127.0.0.1";
-$config["managesieve_port"] = 4190;
-$config["managesieve_usetls"] = false;
-$config["enable_spellcheck"] = true;
-$config["spellcheck_engine"] = "pspell";
-$config["des_key"] = "rcmail-24byteDESkey*Str";
+\$config = [];
+\$config["db_dsnw"] = "sqlite:////home/user-data/mail/roundcube/roundcube.sqlite?mode=0640";
+\$config["default_host"] = "ssl://${MAIL_HOST}";
+\$config["default_port"] = 993;
+\$config["auth_type"] = "PLAIN";
+\$config["session_domain"] = "";
+\$config["session_path"] = "/";
+\$config["imap_conn_options"] = ["ssl" => ["verify_peer" => false, "verify_peer_name" => false, "allow_self_signed" => true]];
+\$config["smtp_server"] = "tls://${MAIL_HOST}";
+\$config["smtp_port"] = 587;
+\$config["smtp_user"] = "%u";
+\$config["smtp_pass"] = "%p";
+\$config["support_url"] = "";
+\$config["product_name"] = "Mail-in-a-Box Webmail";
+\$config["plugins"] = ["archive", "markasjunk", "managesieve"];
+\$config["managesieve_host"] = "127.0.0.1";
+\$config["managesieve_port"] = 4190;
+\$config["managesieve_usetls"] = false;
+\$config["enable_spellcheck"] = true;
+\$config["spellcheck_engine"] = "pspell";
+\$config["des_key"] = "rcmail-24byteDESkey*Str";
 RCCONF
   chown -R www-data:www-data /usr/local/lib/roundcubemail 2>/dev/null || true
 fi
