@@ -110,6 +110,42 @@ These components run on the host (outside the container):
 - **No Nextcloud** — Nextcloud installation is disabled in this container build
 - **Firewall** — Mail-in-a-Box disables the host firewall (UFW) during setup; manage firewall rules at the host level
 
+### Postfix TLS in Docker
+
+STARTTLS on port 587 and SMTPS on port 465 may not work in Docker environments running Postfix 3.6 + OpenSSL 3.0. The TLS handshake completes but the SMTP protocol handoff fails after encryption is established. This is a known compatibility issue between Postfix and OpenSSL 3.0 inside Docker containers with systemd.
+
+**Workaround:** Add trusted relay IPs to Postfix's `mynetworks` and use port 25 (plain SMTP) for outbound submission:
+```bash
+docker exec miad postconf -e "mynetworks = 127.0.0.0/8 [::1]/128 <YOUR_TRUSTED_IPS>"
+docker exec miad postfix reload
+```
+
+### Roundcube Session / CSRF
+
+Roundcube may fail to log in with "Invalid request! No data was saved." or "Login failed" due to the following Docker-specific issues:
+
+1. **Nginx rewrite `$` anchor** — The `rewrite ^/mail/$ /mail/index.php;` in nginx config must use an unescaped `$` (end-of-string anchor). If escaped as `\$`, the rewrite never matches and the directory returns 403, preventing session creation.
+
+2. **Roundcube `auth_type`** — The default auto-detect (`CHECK`) may fail with Dovecot in Docker. Set `auth_type = PLAIN` explicitly.
+
+3. **Roundcube `session_domain`** — Must be set to empty string to prevent cookie domain mismatches. Add `$config["session_domain"] = "";` and `$config["session_path"] = "/";` to Roundcube config.
+
+4. **Roundcube `default_host`** — Use `ssl://${PRIMARY_HOSTNAME}:993` instead of `ssl://127.0.0.1:993` to avoid SSL certificate hostname mismatch and Dovecot PREAUTH issues.
+
+### Dovecot Authentication
+
+1. **SQL auth vs PAM** — MIAB's Docker setup may leave Dovecot using system PAM authentication instead of SQLite. The install script explicitly configures SQL auth against the MIAB user database.
+
+2. **`first_valid_uid`** — Dovecot defaults to `first_valid_uid = 500`, but the mail system user has UID 8. Without setting `first_valid_uid = 0`, SASL authentication succeeds but userdb lookup fails with "Mail access for users with UID 8 not permitted."
+
+3. **`login_trusted_networks`** — Set this to empty to prevent Dovecot from pre-authenticating local connections (PREAUTH), which causes Roundcube's IMAP login to fail silently.
+
+### Management Daemon
+
+The MIAB management daemon (admin panel on port 10222) requires several Python packages that may not be installed by the Docker build: `boto3`, `qrcode`, `pyotp`. The install script installs these automatically.
+
+The daemon also needs explicit environment variables (`STORAGE_ROOT`, `PRIMARY_HOSTNAME`, `PUBLIC_IP`) which are configured via the systemd service unit created by `install.sh`.
+
 ## Roadmap
 
 - [x] MIAB v68 in Docker
