@@ -156,6 +156,9 @@ sed -i "s/^first_valid_uid = .*/first_valid_uid = 0/" /etc/dovecot/conf.d/10-mai
   echo "first_valid_uid = 0" >> /etc/dovecot/conf.d/10-mail.conf
 printf "mail_uid = 8\nmail_gid = 8\n" >> /etc/dovecot/conf.d/99-local.conf 2>/dev/null || true
 
+# Prevent Dovecot from pre-authenticating local connections (PREAUTH)
+echo "login_trusted_networks =" >> /etc/dovecot/conf.d/99-local.conf 2>/dev/null || true
+
 doveadm reload 2>/dev/null || true
 
 # Write nginx config with admin panel + Roundcube
