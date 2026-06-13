@@ -97,7 +97,7 @@ These components run on the host (outside the container):
 |---|---|
 | Mail-in-a-Box v68 | Supported |
 | Ubuntu 22.04 (Jammy) | Supported (host OS requirement) |
-| Ubuntu 24.04+ | Untested — may require patches |
+| Ubuntu 24.04+ | Verified working (see limitations below) |
 | Docker CE (official) | Required |
 | Docker (snap) | Not supported |
 | Other mail stacks | Do not run alongside MIAB on the same host |
