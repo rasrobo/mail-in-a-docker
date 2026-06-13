@@ -177,3 +177,11 @@ The Docker packaging approach builds on patterns from the MIAB community. The up
 ---
 
 If you find this project useful, consider starring the repository on GitHub.
+
+---
+
+Built by [Side Quest Studios](https://sidequeststudios.xyz)
+
+If you find this project useful, consider [supporting development on Ko-fi](https://ko-fi.com/sidequeststudios).
+
+*Keywords: Mail-in-a-Box Docker, email server, self-hosted email, Postfix Dovecot, Docker mail server, open-source email*
