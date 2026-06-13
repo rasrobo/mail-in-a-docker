@@ -2,6 +2,8 @@
 
 **Run Mail-in-a-Box inside a Docker container** — portable, reproducible, and isolated from the host OS.
 
+**What's in it for you:** You get the full convenience of Mail-in-a-Box (Postfix, Dovecot, Roundcube, DKIM, DMARC, SPF) without being locked to Ubuntu 22.04. Run it on any Linux distro that supports Docker — no dedicated host, no OS version requirement, no conflicts with other services.
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ---
