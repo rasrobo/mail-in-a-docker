@@ -167,7 +167,7 @@ doveadm reload 2>/dev/null || true
 # Configure Postfix virtual mailbox delivery
 cat > /etc/postfix/virtual-mailbox-domains.cf << EOF
 dbpath=/home/user-data/mail/users.sqlite
-query = SELECT 1 FROM users WHERE email LIKE "\%\@%s" UNION SELECT 1 FROM aliases WHERE source LIKE "\%\@%s" UNION SELECT 1 FROM auto_aliases WHERE source LIKE "\%\@%s"
+query = SELECT 1 FROM users WHERE email LIKE "%%@%s" UNION SELECT 1 FROM aliases WHERE source LIKE "%%@%s" UNION SELECT 1 FROM auto_aliases WHERE source LIKE "%%@%s"
 EOF
 cat > /etc/postfix/virtual-mailbox-maps.cf << EOF
 dbpath=/home/user-data/mail/users.sqlite
