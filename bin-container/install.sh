@@ -161,6 +161,27 @@ echo "login_trusted_networks =" >> /etc/dovecot/conf.d/99-local.conf 2>/dev/null
 
 doveadm reload 2>/dev/null || true
 
+# Configure Postfix virtual mailbox delivery
+cat > /etc/postfix/virtual-mailbox-domains.cf << EOF
+dbpath=/home/user-data/mail/users.sqlite
+query = SELECT 1 FROM users WHERE email LIKE "\%\@%s" UNION SELECT 1 FROM aliases WHERE source LIKE "\%\@%s" UNION SELECT 1 FROM auto_aliases WHERE source LIKE "\%\@%s"
+EOF
+cat > /etc/postfix/virtual-mailbox-maps.cf << EOF
+dbpath=/home/user-data/mail/users.sqlite
+query = SELECT 1 FROM users WHERE email="%s"
+EOF
+cat > /etc/postfix/virtual-alias-maps.cf << EOF
+dbpath=/home/user-data/mail/users.sqlite
+query = SELECT destination FROM aliases WHERE source="%s"
+EOF
+postconf -e virtual_mailbox_domains=sqlite:/etc/postfix/virtual-mailbox-domains.cf
+postconf -e virtual_mailbox_maps=sqlite:/etc/postfix/virtual-mailbox-maps.cf
+postconf -e virtual_alias_maps=sqlite:/etc/postfix/virtual-alias-maps.cf
+postconf -e local_recipient_maps=\$virtual_mailbox_maps
+postconf -e virtual_transport=lmtp:[127.0.0.1]:10025
+postconf -e smtputf8_enable=no
+postfix reload 2>/dev/null || true
+
 # Write nginx config with admin panel + Roundcube
 cat > /etc/nginx/sites-enabled/default << "NGINX"
 upstream php-fpm { server unix:/var/run/php/php8.1-fpm.sock; }
