@@ -159,6 +159,9 @@ printf "mail_uid = 8\nmail_gid = 8\n" >> /etc/dovecot/conf.d/99-local.conf 2>/de
 # Prevent Dovecot from pre-authenticating local connections (PREAUTH)
 echo "login_trusted_networks =" >> /etc/dovecot/conf.d/99-local.conf 2>/dev/null || true
 
+# Enable Sieve plugin for LMTP delivery (required for mail forwarding)
+sed -i "s/  #mail_plugins = .*/  mail_plugins = \$mail_plugins sieve/" /etc/dovecot/conf.d/20-lmtp.conf 2>/dev/null || true
+
 doveadm reload 2>/dev/null || true
 
 # Configure Postfix virtual mailbox delivery
