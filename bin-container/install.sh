@@ -251,6 +251,24 @@ RCCONF
   chown -R www-data:www-data /usr/local/lib/roundcubemail 2>/dev/null || true
 fi
 
+# ── Enable Dovecot SASL auth socket for Postfix submission port ──
+# MIAB leaves the Postfix auth socket commented out by default, which
+# breaks SMTP AUTH on port 587 with "no SASL authentication mechanisms".
+echo "[install] Enabling Dovecot SASL auth socket for Postfix..."
+sed -i "s|#  unix_listener /var/spool/postfix/private/auth|  unix_listener /var/spool/postfix/private/auth|" /etc/dovecot/conf.d/10-master.conf
+sed -i "s|#    mode = 0666|    mode = 0666|" /etc/dovecot/conf.d/10-master.conf
+grep -q "user = postfix" /etc/dovecot/conf.d/10-master.conf || \
+  sed -i "/unix_listener \/var\/spool\/postfix\/private\/auth {/a\    user = postfix\n    group = postfix" /etc/dovecot/conf.d/10-master.conf
+
+# ── Configure Postfix SASL (Dovecot) ──
+postconf -e "smtpd_sasl_type = dovecot" 2>/dev/null
+postconf -e "smtpd_sasl_path = private/auth" 2>/dev/null
+postconf -e "smtpd_sasl_local_domain =" 2>/dev/null
+
+# Reload services
+doveadm reload 2>/dev/null || true
+postfix reload 2>/dev/null || true
+
 # Reload nginx with the new config
 nginx -t && nginx -s reload 2>/dev/null || true
 
